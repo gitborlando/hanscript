@@ -35,7 +35,6 @@ function tokenizer(input) {
   curToken = ''
   curType = ''
   let _tokens = tokens
-  console.log(tokens)
   tokens = []
   return _tokens
 }
