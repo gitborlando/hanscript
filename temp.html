@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <style>
+    @font-face {
+      font-family: 'font';
+      src: url('./font/腾祥沁圆简-W3\ TTQinYuanJ-W3.ttf');
+    }
+    * {
+      font-size: 15px;
+      font-family: 'font';
+    }
+  </style>
+  <body>
+    <textarea id="textarea" cols="100" rows="30" spellcheck="false">
+打印九九乘法表（）
+{
+  循环（左边=1~9）
+  {
+    循环（右边=1~9）
+    {
+      打印（“《左边》乘《右边》等于《左边*右边》”）
+    }
+  }
+}
+    </textarea>
+    <button id="compile">编译执行</button>
+  </body>
+  <script type="module">
+    import HanScript from './dist/index.esm.js'
+    compile.onclick = () => {
+      const code = HanScript.compile(textarea.value)
+      console.log(code)
+      eval(code)
+    }
+  </script>
+</html>
