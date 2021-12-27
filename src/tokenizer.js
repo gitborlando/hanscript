@@ -1,9 +1,8 @@
 const { TokenType, keywordTypeMap } = require('./type')
 
-const Letters = /[\u4e00-\u9fa5a-zA-Z0-9|&]/
+const Letters = /[\u4e00-\u9fa5a-zA-Z0-9]/
 const Number = /[^\D]/
-const Operators = ['+', '-', '*', '/', '%', '《', '<', '》', '>']
-const noSemicolonChar = /[（(,，{]/
+const Operators = ['+', '-', '*', '/', '%', '《', '<', '》', '>', '|', '&']
 
 let i = 0
 let source = ''
@@ -15,6 +14,7 @@ let tokens = []
 const state = {
   isParsingModelString: false,
   isParsingMemberExpression: false,
+  parsingBrackets: [],
 }
 const search = (x = 1) => source[i + x]
 
@@ -29,7 +29,15 @@ function tokenizer(input) {
     curChar = source[i]
     state = state(curChar)
   }
-  return tokens
+  i = 0
+  source = ''
+  curChar = ''
+  curToken = ''
+  curType = ''
+  let _tokens = tokens
+  console.log(tokens)
+  tokens = []
+  return _tokens
 }
 
 function push(type = curType, value = curToken) {
@@ -56,7 +64,11 @@ function common() {
     return identifier
   }
   if (isChar('=')) {
-    push(TokenType.assignment, '=')
+    if (state.parsingBrackets.length) {
+      push(TokenType.propertyAssignment, '=')
+    } else {
+      push(TokenType.assignment, '=')
+    }
     return common
   }
   if (isChar('‘', "'")) {
@@ -72,6 +84,7 @@ function common() {
     return common
   }
   if (isChar('（', '(')) {
+    state.parsingBrackets.push('(')
     push(TokenType.bracketStart, '（')
     return common
   }
@@ -84,7 +97,6 @@ function common() {
 function identifier() {
   if (Letters.test(curChar)) {
     curToken += curChar
-    curType = TokenType.identifier
     return identifier
   }
   if (isChar(' ')) {
@@ -93,10 +105,15 @@ function identifier() {
   }
   if (isChar('=')) {
     push()
-    push(TokenType.assignment, '=')
+    if (state.parsingBrackets.length) {
+      push(TokenType.propertyAssignment, '=')
+    } else {
+      push(TokenType.assignment, '=')
+    }
     return common
   }
   if (isChar('（', '(')) {
+    state.parsingBrackets.push('(')
     push()
     push(TokenType.bracketStart, '（')
     return common
@@ -111,7 +128,7 @@ function identifier() {
 }
 
 function string() {
-  if (isChar('‘', "'")) {
+  if (isChar('’', "'")) {
     push()
     return common
   }
@@ -140,8 +157,7 @@ function templateString() {
 function number() {
   if (Number.test(curChar) || isChar('.')) {
     curToken += curChar
-    curType = TokenType.number
-    return common
+    return number
   }
   return end()
 }
@@ -168,13 +184,13 @@ function end() {
     return common
   }
   if (isChar('）', ')')) {
+    state.parsingBrackets.pop()
     push()
     push(TokenType.bracketEnd, '）')
     return common
   }
   if (isChar('}')) {
     if (state.isParsingMemberExpression) {
-      push()
       push(TokenType.memberEnd, '}')
       state.isParsingMemberExpression = false
       return common
@@ -209,8 +225,8 @@ function end() {
     }
     const next = search(nonNullIndex)
     if (
-      noSemicolonChar.test(prev) ||
-      noSemicolonChar.test(next) ||
+      /[（(,，{]/.test(prev) ||
+      /[（）(),，{]/.test(next) ||
       /[或否]/.test(next) ||
       next === '）' ||
       !prev

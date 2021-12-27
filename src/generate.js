@@ -1,8 +1,6 @@
 const { TokenType, ASTType } = require('./type')
 
 const Preset = {
-  $_quzhi:
-    '(arr, i) => (Array.isArray(arr) && typeof i === "number") ? arr[i - 1] : arr[i]',
   打印: 'console.log',
   dy: 'console.log',
   长度: '(a) => a.length',
@@ -11,8 +9,6 @@ const Preset = {
   sswr: 'parseInt',
   绝对值: 'Math.abs',
   jdz: 'Math.abs',
-  交换: '(a, b, t = "") => {t = a;a = b;b = t}',
-  jh: '(a, b, t = "") => {t = a;a = b;b = t}',
   从小到大: '(arr) => arr.sort((a, b) => a < b)',
   cxdd: '(arr) => arr.sort((a, b) => a < b)',
   从大到小: '(arr) => arr.sort((a, b) => a > b)',
@@ -21,6 +17,8 @@ const Preset = {
 const OperatorMap = {
   '》': '>',
   '《': '<',
+  '&': '&&',
+  '|': '||',
 }
 
 function generate(ast) {
@@ -55,12 +53,14 @@ function generateStatement(statements) {
 function generateExpressionStatement({ expression }) {
   switch (expression.type) {
     case ASTType.VariableDeclaration: {
-      return `let ${expression.id.value} = ${generateExpression(
-        expression.value
+      return `let ${generateExpression(expression.left)} = ${generateExpression(
+        expression.right
       )}`
     }
     case ASTType.AssignmentExpression: {
-      return `${expression.id.value} = ${generateExpression(expression.value)}`
+      return `${generateExpression(expression.left)} = ${generateExpression(
+        expression.right
+      )}`
     }
     default: {
       return generateExpression(expression)
@@ -85,8 +85,13 @@ function generateBlockStatement(statement) {
       return `for (${generateExpressionStatement({
         expression: statement.init,
       })};${generateExpression(statement.test)};${
-        statement.init.id.value
+        statement.init.left.value
       }++){\n${generateStatement(statement.body.body)}}`
+    }
+    case ASTType.WhileStatement: {
+      return `while (${generateExpression(
+        statement.test
+      )}){\n${generateStatement(statement.consequent.body)}}`
     }
     case ASTType.FunctionDeclaration: {
       return `function ${statement.id.value}(${statement.params.map((param) =>
@@ -138,6 +143,9 @@ function generateExpression(expression) {
         expression.expression
       )}`
     }
+    case ASTType.GroupExpression: {
+      return `(${generateExpression(expression.expression)})`
+    }
     case ASTType.ObjectExpression: {
       return (
         '\n{\n' +
@@ -167,9 +175,9 @@ function generateExpression(expression) {
       )})`
     }
     case ASTType.MemberExpression: {
-      return `$_quzhi(${expression.object.value}, ${generateExpression(
+      return `${expression.object.value}[${generateExpression(
         expression.property
-      )})`
+      )}]`
     }
   }
 }

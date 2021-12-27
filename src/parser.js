@@ -63,24 +63,35 @@ function parser(arr) {
     ast.push(parseStatement())
     walkNext()
   }
+  i = 0
+  tokens = []
+  curToken = null
+  nextToken = null
+  curType = ''
+  nextType = ''
+  declarations = []
   return ast
 }
 
 function parseStatement() {
-  if (curToken.type === TokenType.keywordIf) {
+  if (curType === TokenType.keywordIf) {
     return parseIfStatement()
-  } else if (curToken.type === TokenType.keywordFor) {
+  }
+  if (curType === TokenType.keywordFor) {
     return parseForStatement()
   }
-  let _i = i - 2
-  while (tokens[_i].type !== TokenType.bracketEnd) {
-    if (tokens[_i].type === TokenType.semicolon) {
-      _i = -999
+  if (curType === TokenType.keywordWhile) {
+    return parseWhileStatement()
+  }
+  let j = i - 2
+  while (tokens[j].type !== TokenType.bracketEnd) {
+    if (tokens[j].type === TokenType.semicolon) {
+      j = -999
       break
     }
-    _i++
+    j++
   }
-  if (_i !== -999 && tokens[_i + 1].type === TokenType.blockStart) {
+  if (j !== -999 && tokens[j + 1].type === TokenType.blockStart) {
     return parseFunctionDeclartionStatement()
   }
   return parseExpressionStatement()
@@ -111,6 +122,7 @@ function parseIfStatement() {
   ifStatement.type = ASTType.IfStatement
   walkTwice()
   ifStatement.test = parseExpression()
+  walkNext()
   ifStatement.consequent = parseBlockStatement()
   if (curType === TokenType.keywordElif) {
     ifStatement.alternate = parseIfStatement()
@@ -126,30 +138,33 @@ function parseForStatement() {
   forStatement.type = ASTType.ForStatement
   walkTwice()
   let identifier = ''
-  let initExpression = null
-  let endExpression = null
-  while (curType !== TokenType.bracketEnd) {
-    if (curType !== TokenType.identifier) error('149:expected identifier')
-    identifier = createNode()
-    walkTwice()
-    initExpression = parseExpression()
-    walkNext()
-    endExpression = parseExpression()
-  }
+  identifier = createNode()
+  walkTwice()
   forStatement.init = {
     type: ASTType.VariableDeclaration,
-    id: identifier,
-    value: initExpression,
+    left: identifier,
+    right: parseExpression(),
   }
+  walkNext()
   forStatement.test = {
     type: ASTType.BinaryExpression,
     left: identifier,
-    operator: '<=',
-    right: endExpression,
+    operator: '<',
+    right: parseExpression(),
   }
   walkNext()
   forStatement.body = parseBlockStatement()
   return forStatement
+}
+
+function parseWhileStatement() {
+  const whileStatement = {}
+  whileStatement.type = ASTType.WhileStatement
+  walkTwice()
+  whileStatement.test = parseExpression()
+  walkNext()
+  whileStatement.consequent = parseBlockStatement()
+  return whileStatement
 }
 
 function parseFunctionDeclartionStatement() {
@@ -160,7 +175,8 @@ function parseFunctionDeclartionStatement() {
   walkTwice()
   while (curType !== TokenType.bracketEnd) {
     if (curType === TokenType.comma) walkNext()
-    if (curType !== TokenType.identifier) error('181:expected identifier')
+    if (curType !== TokenType.identifier)
+      error('parseFunctionDeclartionStatement:expected identifier')
     functionStatement.params.push(createNode())
     walkNext()
   }
@@ -170,8 +186,6 @@ function parseFunctionDeclartionStatement() {
 }
 
 function parseExpression() {
-  const expressionNode = {}
-
   if (
     [
       TokenType.identifier,
@@ -182,6 +196,7 @@ function parseExpression() {
     ].includes(curType) &&
     [
       TokenType.operator,
+      TokenType.assignment,
       TokenType.semicolon,
       TokenType.comma,
       TokenType.bracketEnd,
@@ -192,45 +207,76 @@ function parseExpression() {
   ) {
     const node = createNode()
     walkNext()
-    return curType === TokenType.operator ? parseBinaryExpression(node) : node
+    return parseAssignmentOrBinaryExpression(node)
   }
 
   if (curType === TokenType.templateStart) {
-    return parseTemplateLiteral(expressionNode)
+    return parseTemplateLiteral()
   }
 
   if (curType === TokenType.identifier) {
-    if (nextType === TokenType.assignment) {
-      return parseAssignmentExpression(expressionNode)
-    }
     if (nextType === TokenType.bracketStart) {
-      return parseCallExpression(expressionNode)
+      return parseCallExpression()
     }
     if (nextType === TokenType.memberStart) {
-      return parseMemberExpression(expressionNode)
+      return parseMemberExpression()
     }
   }
 
   if (curType === TokenType.bracketStart) {
     walkNext()
-    let _i = i - 2
-    while (tokens[_i].type !== TokenType.bracketEnd) {
-      if (tokens[_i].type === TokenType.assignment) {
-        return parseObjectExpression(expressionNode)
+    let j = i - 2
+    let tempStack = ['(']
+    while (
+      !(tokens[j].type === TokenType.bracketEnd && tempStack.length === 1)
+    ) {
+      if (tokens[j].type === TokenType.bracketStart) tempStack.push('(')
+      if (tokens[j].type === TokenType.bracketEnd) tempStack.pop()
+      if (tokens[j].type === TokenType.operator && tempStack.length === 1) {
+        return parseGroupExpression()
       }
-      if (tokens[_i].type === TokenType.operator) {
-        return parseExpression()
+      if (
+        tokens[j].type === TokenType.propertyAssignment &&
+        tempStack.length === 1
+      ) {
+        return parseObjectExpression()
       }
-      _i++
+      j++
     }
-    return parseArrayExpression(expressionNode)
+    return parseArrayExpression()
   }
 
   if (curToken.value === '-') {
-    return parsePreorderExpression(expressionNode)
+    return parsePreorderExpression()
   }
 
-  error(`258:unexpected expression ${curType} ${curToken.value}`)
+  error(`parseExpression: unexpected expression ${curType} ${curToken.value}`)
+}
+
+function parseAssignmentOrBinaryExpression(expressionNode) {
+  if (curType === TokenType.assignment) {
+    return parseAssignmentExpression(expressionNode)
+  }
+  if (curType === TokenType.operator) {
+    return parseBinaryExpression(expressionNode)
+  }
+  return expressionNode
+}
+
+function parseAssignmentExpression(curNode) {
+  const expressionNode = {}
+  expressionNode.type = ASTType.AssignmentExpression
+  if (
+    curNode.type === TokenType.identifier &&
+    !declarations.includes(curNode?.value)
+  ) {
+    expressionNode.type = ASTType.VariableDeclaration
+    declarations.push(curNode.value)
+  }
+  expressionNode.left = curNode
+  walkNext()
+  expressionNode.right = parseExpression()
+  return expressionNode
 }
 
 function parseBinaryExpression(curNode) {
@@ -240,34 +286,28 @@ function parseBinaryExpression(curNode) {
   expressionNode.operator = curToken.value
   walkNext()
   expressionNode.right = parseExpression()
-  if (curType === TokenType.bracketEnd) walkNext()
-  return curType === TokenType.operator
-    ? parseBinaryExpression(expressionNode)
-    : expressionNode
+  return parseAssignmentOrBinaryExpression(expressionNode)
 }
 
-function parseAssignmentExpression(expressionNode) {
-  if (declarations.includes(curToken.value)) {
-    expressionNode.type = ASTType.AssignmentExpression
-  } else {
-    expressionNode.type = ASTType.VariableDeclaration
-    declarations.push(curToken.value)
-  }
-  expressionNode.id = createNode()
-  walkTwice()
-  expressionNode.value = parseExpression()
-  return expressionNode
-}
-
-function parsePreorderExpression(expressionNode) {
+function parsePreorderExpression() {
+  const expressionNode = {}
   expressionNode.type = ASTType.PreorderExpression
   expressionNode.operator = curToken.value
   walkNext()
   expressionNode.expression = parseExpression()
-  return expressionNode
+  return parseAssignmentOrBinaryExpression(expressionNode)
 }
 
-function parseObjectExpression(expressionNode) {
+function parseGroupExpression() {
+  const expressionNode = {}
+  expressionNode.type = ASTType.GroupExpression
+  expressionNode.expression = parseExpression()
+  walkNext()
+  return parseAssignmentOrBinaryExpression(expressionNode)
+}
+
+function parseObjectExpression() {
+  const expressionNode = {}
   expressionNode.type = ASTType.ObjectExpression
   expressionNode.properties = []
   let tempStack = ['(']
@@ -283,7 +323,8 @@ function parseObjectExpression(expressionNode) {
     if (!tempStack.length) break
 
     if (isKey && curType !== TokenType.bracketEnd) {
-      if (curType !== TokenType.identifier) error('298:expected identifier')
+      if (curType !== TokenType.identifier)
+        error('parseObjectExpression: expected identifier')
       tempNode.key = createNode()
       walkTwice()
       isKey = false
@@ -295,10 +336,11 @@ function parseObjectExpression(expressionNode) {
     }
   }
   walkNext()
-  return expressionNode
+  return parseAssignmentOrBinaryExpression(expressionNode)
 }
 
-function parseArrayExpression(expressionNode) {
+function parseArrayExpression() {
+  const expressionNode = {}
   expressionNode.type = ASTType.ArrayExpression
   expressionNode.elements = []
   let tempStack = ['(']
@@ -313,10 +355,11 @@ function parseArrayExpression(expressionNode) {
     expressionNode.elements.push(parseExpression())
   }
   walkNext()
-  return expressionNode
+  return parseAssignmentOrBinaryExpression(expressionNode)
 }
 
-function parseCallExpression(expressionNode) {
+function parseCallExpression() {
+  const expressionNode = {}
   expressionNode.type = ASTType.CallExpression
   expressionNode.callee = createNode()
   expressionNode.arguments = []
@@ -326,23 +369,21 @@ function parseCallExpression(expressionNode) {
     expressionNode.arguments.push(parseExpression())
   }
   walkNext()
-  return curType === TokenType.operator
-    ? parseBinaryExpression(expressionNode)
-    : expressionNode
+  return parseAssignmentOrBinaryExpression(expressionNode)
 }
 
-function parseMemberExpression(expressionNode) {
+function parseMemberExpression() {
+  const expressionNode = {}
   expressionNode.type = ASTType.MemberExpression
   expressionNode.object = createNode()
   walkTwice()
   expressionNode.property = parseExpression()
   walkNext()
-  return curType === TokenType.operator
-    ? parseBinaryExpression(expressionNode)
-    : expressionNode
+  return parseAssignmentOrBinaryExpression(expressionNode)
 }
 
-function parseTemplateLiteral(expressionNode) {
+function parseTemplateLiteral() {
+  const expressionNode = {}
   expressionNode.type = ASTType.TemplateLiteral
   expressionNode.items = []
   walkNext()
@@ -360,9 +401,7 @@ function parseTemplateLiteral(expressionNode) {
     }
   }
   walkNext()
-  return curType === TokenType.operator
-    ? parseBinaryExpression(expressionNode)
-    : expressionNode
+  return parseAssignmentOrBinaryExpression(expressionNode)
 }
 
 function error(err) {

@@ -13,6 +13,7 @@
 
     operator: 'operators',
     assignment: 'assignment',
+    propertyAssignment: 'propertyAssignment',
     bracketStart: 'bracketStart',
     bracketEnd: 'bracketEnd',
     memberStart: 'memberStart',
@@ -34,6 +35,7 @@
     keywordElif: 'keywordElif',
     keywordElse: 'keywordElse',
     keywordFor: 'keywordFor',
+    keywordWhile: 'keywordWhile',
     keywordFromTo: 'keywordFromTo',
     keywordContinue: 'keywordContinue',
     keywordBreak: 'keywordBreak',
@@ -45,11 +47,13 @@
     ExpressionStatement: 'ExpressionStatement',
     IfStatement: 'IfStatement',
     ForStatement: 'ForStatement',
+    WhileStatement: 'WhileStatement',
     VariableDeclaration: 'VariableDeclaration',
     FunctionDeclaration: 'FunctionDeclaration',
     AssignmentExpression: 'AssignmentExpression',
     BinaryExpression: 'BinaryExpression',
     PreorderExpression: 'PreorderExpression',
+    GroupExpression: 'GroupExpression',
     ObjectExpression: 'ObjectExpression',
     ArrayExpression: 'ArrayExpression',
     CallExpression: 'CallExpression',
@@ -70,14 +74,14 @@
     else: 'keywordElse',
     循环: 'keywordFor',
     for: 'keywordFor',
+    直到: 'keywordWhile',
+    while: 'keywordWhile',
     跳过: 'keywordContinue',
     pass: 'keywordContinue',
     退出: 'keywordBreak',
     break: 'keywordBreak',
     返回: 'keywordReturn',
     return: 'keywordReturn',
-    '|': 'keywordOr',
-    '&': 'keywordAnd',
   };
 
   var type = {
@@ -89,8 +93,6 @@
   const { TokenType: TokenType$2, ASTType: ASTType$1 } = type;
 
   const Preset = {
-    $_quzhi:
-      '(arr, i) => (Array.isArray(arr) && typeof i === "number") ? arr[i - 1] : arr[i]',
     打印: 'console.log',
     dy: 'console.log',
     长度: '(a) => a.length',
@@ -99,8 +101,6 @@
     sswr: 'parseInt',
     绝对值: 'Math.abs',
     jdz: 'Math.abs',
-    交换: '(a, b, t = "") => {t = a;a = b;b = t}',
-    jh: '(a, b, t = "") => {t = a;a = b;b = t}',
     从小到大: '(arr) => arr.sort((a, b) => a < b)',
     cxdd: '(arr) => arr.sort((a, b) => a < b)',
     从大到小: '(arr) => arr.sort((a, b) => a > b)',
@@ -109,6 +109,8 @@
   const OperatorMap = {
     '》': '>',
     '《': '<',
+    '&': '&&',
+    '|': '||',
   };
 
   function generate(ast) {
@@ -143,12 +145,14 @@
   function generateExpressionStatement({ expression }) {
     switch (expression.type) {
       case ASTType$1.VariableDeclaration: {
-        return `let ${expression.id.value} = ${generateExpression(
-        expression.value
+        return `let ${generateExpression(expression.left)} = ${generateExpression(
+        expression.right
       )}`
       }
       case ASTType$1.AssignmentExpression: {
-        return `${expression.id.value} = ${generateExpression(expression.value)}`
+        return `${generateExpression(expression.left)} = ${generateExpression(
+        expression.right
+      )}`
       }
       default: {
         return generateExpression(expression)
@@ -173,8 +177,13 @@
         return `for (${generateExpressionStatement({
         expression: statement.init,
       })};${generateExpression(statement.test)};${
-        statement.init.id.value
+        statement.init.left.value
       }++){\n${generateStatement(statement.body.body)}}`
+      }
+      case ASTType$1.WhileStatement: {
+        return `while (${generateExpression(
+        statement.test
+      )}){\n${generateStatement(statement.consequent.body)}}`
       }
       case ASTType$1.FunctionDeclaration: {
         return `function ${statement.id.value}(${statement.params.map((param) =>
@@ -226,6 +235,9 @@
         expression.expression
       )}`
       }
+      case ASTType$1.GroupExpression: {
+        return `(${generateExpression(expression.expression)})`
+      }
       case ASTType$1.ObjectExpression: {
         return (
           '\n{\n' +
@@ -255,9 +267,9 @@
       )})`
       }
       case ASTType$1.MemberExpression: {
-        return `$_quzhi(${expression.object.value}, ${generateExpression(
+        return `${expression.object.value}[${generateExpression(
         expression.property
-      )})`
+      )}]`
       }
     }
   }
@@ -329,24 +341,35 @@
       ast.push(parseStatement());
       walkNext();
     }
+    i$1 = 0;
+    tokens$1 = [];
+    curToken$1 = null;
+    nextToken = null;
+    curType$1 = '';
+    nextType = '';
+    declarations = [];
     return ast
   }
 
   function parseStatement() {
-    if (curToken$1.type === TokenType$1.keywordIf) {
+    if (curType$1 === TokenType$1.keywordIf) {
       return parseIfStatement()
-    } else if (curToken$1.type === TokenType$1.keywordFor) {
+    }
+    if (curType$1 === TokenType$1.keywordFor) {
       return parseForStatement()
     }
-    let _i = i$1 - 2;
-    while (tokens$1[_i].type !== TokenType$1.bracketEnd) {
-      if (tokens$1[_i].type === TokenType$1.semicolon) {
-        _i = -999;
+    if (curType$1 === TokenType$1.keywordWhile) {
+      return parseWhileStatement()
+    }
+    let j = i$1 - 2;
+    while (tokens$1[j].type !== TokenType$1.bracketEnd) {
+      if (tokens$1[j].type === TokenType$1.semicolon) {
+        j = -999;
         break
       }
-      _i++;
+      j++;
     }
-    if (_i !== -999 && tokens$1[_i + 1].type === TokenType$1.blockStart) {
+    if (j !== -999 && tokens$1[j + 1].type === TokenType$1.blockStart) {
       return parseFunctionDeclartionStatement()
     }
     return parseExpressionStatement()
@@ -377,6 +400,7 @@
     ifStatement.type = ASTType.IfStatement;
     walkTwice();
     ifStatement.test = parseExpression();
+    walkNext();
     ifStatement.consequent = parseBlockStatement();
     if (curType$1 === TokenType$1.keywordElif) {
       ifStatement.alternate = parseIfStatement();
@@ -392,30 +416,33 @@
     forStatement.type = ASTType.ForStatement;
     walkTwice();
     let identifier = '';
-    let initExpression = null;
-    let endExpression = null;
-    while (curType$1 !== TokenType$1.bracketEnd) {
-      if (curType$1 !== TokenType$1.identifier) error('149:expected identifier');
-      identifier = createNode();
-      walkTwice();
-      initExpression = parseExpression();
-      walkNext();
-      endExpression = parseExpression();
-    }
+    identifier = createNode();
+    walkTwice();
     forStatement.init = {
       type: ASTType.VariableDeclaration,
-      id: identifier,
-      value: initExpression,
+      left: identifier,
+      right: parseExpression(),
     };
+    walkNext();
     forStatement.test = {
       type: ASTType.BinaryExpression,
       left: identifier,
-      operator: '<=',
-      right: endExpression,
+      operator: '<',
+      right: parseExpression(),
     };
     walkNext();
     forStatement.body = parseBlockStatement();
     return forStatement
+  }
+
+  function parseWhileStatement() {
+    const whileStatement = {};
+    whileStatement.type = ASTType.WhileStatement;
+    walkTwice();
+    whileStatement.test = parseExpression();
+    walkNext();
+    whileStatement.consequent = parseBlockStatement();
+    return whileStatement
   }
 
   function parseFunctionDeclartionStatement() {
@@ -426,7 +453,8 @@
     walkTwice();
     while (curType$1 !== TokenType$1.bracketEnd) {
       if (curType$1 === TokenType$1.comma) walkNext();
-      if (curType$1 !== TokenType$1.identifier) error('181:expected identifier');
+      if (curType$1 !== TokenType$1.identifier)
+        error('parseFunctionDeclartionStatement:expected identifier');
       functionStatement.params.push(createNode());
       walkNext();
     }
@@ -436,8 +464,6 @@
   }
 
   function parseExpression() {
-    const expressionNode = {};
-
     if (
       [
         TokenType$1.identifier,
@@ -448,6 +474,7 @@
       ].includes(curType$1) &&
       [
         TokenType$1.operator,
+        TokenType$1.assignment,
         TokenType$1.semicolon,
         TokenType$1.comma,
         TokenType$1.bracketEnd,
@@ -458,45 +485,76 @@
     ) {
       const node = createNode();
       walkNext();
-      return curType$1 === TokenType$1.operator ? parseBinaryExpression(node) : node
+      return parseAssignmentOrBinaryExpression(node)
     }
 
     if (curType$1 === TokenType$1.templateStart) {
-      return parseTemplateLiteral(expressionNode)
+      return parseTemplateLiteral()
     }
 
     if (curType$1 === TokenType$1.identifier) {
-      if (nextType === TokenType$1.assignment) {
-        return parseAssignmentExpression(expressionNode)
-      }
       if (nextType === TokenType$1.bracketStart) {
-        return parseCallExpression(expressionNode)
+        return parseCallExpression()
       }
       if (nextType === TokenType$1.memberStart) {
-        return parseMemberExpression(expressionNode)
+        return parseMemberExpression()
       }
     }
 
     if (curType$1 === TokenType$1.bracketStart) {
       walkNext();
-      let _i = i$1 - 2;
-      while (tokens$1[_i].type !== TokenType$1.bracketEnd) {
-        if (tokens$1[_i].type === TokenType$1.assignment) {
-          return parseObjectExpression(expressionNode)
+      let j = i$1 - 2;
+      let tempStack = ['('];
+      while (
+        !(tokens$1[j].type === TokenType$1.bracketEnd && tempStack.length === 1)
+      ) {
+        if (tokens$1[j].type === TokenType$1.bracketStart) tempStack.push('(');
+        if (tokens$1[j].type === TokenType$1.bracketEnd) tempStack.pop();
+        if (tokens$1[j].type === TokenType$1.operator && tempStack.length === 1) {
+          return parseGroupExpression()
         }
-        if (tokens$1[_i].type === TokenType$1.operator) {
-          return parseExpression()
+        if (
+          tokens$1[j].type === TokenType$1.propertyAssignment &&
+          tempStack.length === 1
+        ) {
+          return parseObjectExpression()
         }
-        _i++;
+        j++;
       }
-      return parseArrayExpression(expressionNode)
+      return parseArrayExpression()
     }
 
     if (curToken$1.value === '-') {
-      return parsePreorderExpression(expressionNode)
+      return parsePreorderExpression()
     }
 
-    error(`258:unexpected expression ${curType$1} ${curToken$1.value}`);
+    error(`parseExpression: unexpected expression ${curType$1} ${curToken$1.value}`);
+  }
+
+  function parseAssignmentOrBinaryExpression(expressionNode) {
+    if (curType$1 === TokenType$1.assignment) {
+      return parseAssignmentExpression(expressionNode)
+    }
+    if (curType$1 === TokenType$1.operator) {
+      return parseBinaryExpression(expressionNode)
+    }
+    return expressionNode
+  }
+
+  function parseAssignmentExpression(curNode) {
+    const expressionNode = {};
+    expressionNode.type = ASTType.AssignmentExpression;
+    if (
+      curNode.type === TokenType$1.identifier &&
+      !declarations.includes(curNode?.value)
+    ) {
+      expressionNode.type = ASTType.VariableDeclaration;
+      declarations.push(curNode.value);
+    }
+    expressionNode.left = curNode;
+    walkNext();
+    expressionNode.right = parseExpression();
+    return expressionNode
   }
 
   function parseBinaryExpression(curNode) {
@@ -506,34 +564,28 @@
     expressionNode.operator = curToken$1.value;
     walkNext();
     expressionNode.right = parseExpression();
-    if (curType$1 === TokenType$1.bracketEnd) walkNext();
-    return curType$1 === TokenType$1.operator
-      ? parseBinaryExpression(expressionNode)
-      : expressionNode
+    return parseAssignmentOrBinaryExpression(expressionNode)
   }
 
-  function parseAssignmentExpression(expressionNode) {
-    if (declarations.includes(curToken$1.value)) {
-      expressionNode.type = ASTType.AssignmentExpression;
-    } else {
-      expressionNode.type = ASTType.VariableDeclaration;
-      declarations.push(curToken$1.value);
-    }
-    expressionNode.id = createNode();
-    walkTwice();
-    expressionNode.value = parseExpression();
-    return expressionNode
-  }
-
-  function parsePreorderExpression(expressionNode) {
+  function parsePreorderExpression() {
+    const expressionNode = {};
     expressionNode.type = ASTType.PreorderExpression;
     expressionNode.operator = curToken$1.value;
     walkNext();
     expressionNode.expression = parseExpression();
-    return expressionNode
+    return parseAssignmentOrBinaryExpression(expressionNode)
   }
 
-  function parseObjectExpression(expressionNode) {
+  function parseGroupExpression() {
+    const expressionNode = {};
+    expressionNode.type = ASTType.GroupExpression;
+    expressionNode.expression = parseExpression();
+    walkNext();
+    return parseAssignmentOrBinaryExpression(expressionNode)
+  }
+
+  function parseObjectExpression() {
+    const expressionNode = {};
     expressionNode.type = ASTType.ObjectExpression;
     expressionNode.properties = [];
     let tempStack = ['('];
@@ -549,7 +601,8 @@
       if (!tempStack.length) break
 
       if (isKey && curType$1 !== TokenType$1.bracketEnd) {
-        if (curType$1 !== TokenType$1.identifier) error('298:expected identifier');
+        if (curType$1 !== TokenType$1.identifier)
+          error('parseObjectExpression: expected identifier');
         tempNode.key = createNode();
         walkTwice();
         isKey = false;
@@ -561,10 +614,11 @@
       }
     }
     walkNext();
-    return expressionNode
+    return parseAssignmentOrBinaryExpression(expressionNode)
   }
 
-  function parseArrayExpression(expressionNode) {
+  function parseArrayExpression() {
+    const expressionNode = {};
     expressionNode.type = ASTType.ArrayExpression;
     expressionNode.elements = [];
     let tempStack = ['('];
@@ -579,10 +633,11 @@
       expressionNode.elements.push(parseExpression());
     }
     walkNext();
-    return expressionNode
+    return parseAssignmentOrBinaryExpression(expressionNode)
   }
 
-  function parseCallExpression(expressionNode) {
+  function parseCallExpression() {
+    const expressionNode = {};
     expressionNode.type = ASTType.CallExpression;
     expressionNode.callee = createNode();
     expressionNode.arguments = [];
@@ -592,23 +647,21 @@
       expressionNode.arguments.push(parseExpression());
     }
     walkNext();
-    return curType$1 === TokenType$1.operator
-      ? parseBinaryExpression(expressionNode)
-      : expressionNode
+    return parseAssignmentOrBinaryExpression(expressionNode)
   }
 
-  function parseMemberExpression(expressionNode) {
+  function parseMemberExpression() {
+    const expressionNode = {};
     expressionNode.type = ASTType.MemberExpression;
     expressionNode.object = createNode();
     walkTwice();
     expressionNode.property = parseExpression();
     walkNext();
-    return curType$1 === TokenType$1.operator
-      ? parseBinaryExpression(expressionNode)
-      : expressionNode
+    return parseAssignmentOrBinaryExpression(expressionNode)
   }
 
-  function parseTemplateLiteral(expressionNode) {
+  function parseTemplateLiteral() {
+    const expressionNode = {};
     expressionNode.type = ASTType.TemplateLiteral;
     expressionNode.items = [];
     walkNext();
@@ -626,9 +679,7 @@
       }
     }
     walkNext();
-    return curType$1 === TokenType$1.operator
-      ? parseBinaryExpression(expressionNode)
-      : expressionNode
+    return parseAssignmentOrBinaryExpression(expressionNode)
   }
 
   function error(err) {
@@ -639,10 +690,9 @@
 
   const { TokenType, keywordTypeMap } = type;
 
-  const Letters = /[\u4e00-\u9fa5a-zA-Z0-9|&]/;
+  const Letters = /[\u4e00-\u9fa5a-zA-Z0-9]/;
   const Number = /[^\D]/;
-  const Operators = ['+', '-', '*', '/', '%', '《', '<', '》', '>'];
-  const noSemicolonChar = /[（(,，{]/;
+  const Operators = ['+', '-', '*', '/', '%', '《', '<', '》', '>', '|', '&'];
 
   let i = 0;
   let source = '';
@@ -654,6 +704,7 @@
   const state = {
     isParsingModelString: false,
     isParsingMemberExpression: false,
+    parsingBrackets: [],
   };
   const search = (x = 1) => source[i + x];
 
@@ -668,7 +719,15 @@
       curChar = source[i];
       state = state(curChar);
     }
-    return tokens
+    i = 0;
+    source = '';
+    curChar = '';
+    curToken = '';
+    curType = '';
+    let _tokens = tokens;
+    console.log(tokens);
+    tokens = [];
+    return _tokens
   }
 
   function push(type = curType, value = curToken) {
@@ -695,7 +754,11 @@
       return identifier
     }
     if (isChar('=')) {
-      push(TokenType.assignment, '=');
+      if (state.parsingBrackets.length) {
+        push(TokenType.propertyAssignment, '=');
+      } else {
+        push(TokenType.assignment, '=');
+      }
       return common
     }
     if (isChar('‘', "'")) {
@@ -711,6 +774,7 @@
       return common
     }
     if (isChar('（', '(')) {
+      state.parsingBrackets.push('(');
       push(TokenType.bracketStart, '（');
       return common
     }
@@ -723,7 +787,6 @@
   function identifier() {
     if (Letters.test(curChar)) {
       curToken += curChar;
-      curType = TokenType.identifier;
       return identifier
     }
     if (isChar(' ')) {
@@ -732,10 +795,15 @@
     }
     if (isChar('=')) {
       push();
-      push(TokenType.assignment, '=');
+      if (state.parsingBrackets.length) {
+        push(TokenType.propertyAssignment, '=');
+      } else {
+        push(TokenType.assignment, '=');
+      }
       return common
     }
     if (isChar('（', '(')) {
+      state.parsingBrackets.push('(');
       push();
       push(TokenType.bracketStart, '（');
       return common
@@ -750,7 +818,7 @@
   }
 
   function string() {
-    if (isChar('‘', "'")) {
+    if (isChar('’', "'")) {
       push();
       return common
     }
@@ -779,8 +847,7 @@
   function number() {
     if (Number.test(curChar) || isChar('.')) {
       curToken += curChar;
-      curType = TokenType.number;
-      return common
+      return number
     }
     return end()
   }
@@ -807,13 +874,13 @@
       return common
     }
     if (isChar('）', ')')) {
+      state.parsingBrackets.pop();
       push();
       push(TokenType.bracketEnd, '）');
       return common
     }
     if (isChar('}')) {
       if (state.isParsingMemberExpression) {
-        push();
         push(TokenType.memberEnd, '}');
         state.isParsingMemberExpression = false;
         return common
@@ -848,8 +915,8 @@
       }
       const next = search(nonNullIndex);
       if (
-        noSemicolonChar.test(prev) ||
-        noSemicolonChar.test(next) ||
+        /[（(,，{]/.test(prev) ||
+        /[（）(),，{]/.test(next) ||
         /[或否]/.test(next) ||
         next === '）' ||
         !prev
