@@ -29,13 +29,7 @@
 
 const { TokenType, ASTType } = require('./type')
 
-let i = 0
-let tokens = []
-let curToken = null
-let nextToken = null
-let curType = ''
-let nextType = ''
-let declarations = []
+let i, tokens, curToken, nextToken, curType, nextType, declarations, state
 
 function walkNext() {
   curToken = nextToken
@@ -56,21 +50,25 @@ function createNode(token = curToken) {
 }
 
 function parser(arr) {
+  i = 0
   tokens = arr
+  curToken = null
+  nextToken = null
+  curType = ''
+  nextType = ''
+  declarations = []
+  state = {
+    variables: [],
+    functions: [],
+  }
+
   walkTwice()
   const ast = []
   while (i < arr.length + 2) {
     ast.push(parseStatement())
     walkNext()
   }
-  i = 0
-  tokens = []
-  curToken = null
-  nextToken = null
-  curType = ''
-  nextType = ''
-  declarations = []
-  return ast
+  return { ast, state }
 }
 
 function parseStatement() {
@@ -182,6 +180,10 @@ function parseFunctionDeclartionStatement() {
   }
   walkNext()
   functionStatement.body = parseBlockStatement()
+  state.functions.push({
+    id: functionStatement.id.value,
+    params: functionStatement.params.map((p) => p.value),
+  })
   return functionStatement
 }
 
@@ -272,6 +274,7 @@ function parseAssignmentExpression(curNode) {
   ) {
     expressionNode.type = ASTType.VariableDeclaration
     declarations.push(curNode.value)
+    state.variables.push(curNode)
   }
   expressionNode.left = curNode
   walkNext()

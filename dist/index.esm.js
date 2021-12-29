@@ -301,13 +301,7 @@ var generate_1 = generate;
 
 const { TokenType: TokenType$1, ASTType } = type;
 
-let i$1 = 0;
-let tokens$1 = [];
-let curToken$1 = null;
-let nextToken = null;
-let curType$1 = '';
-let nextType = '';
-let declarations = [];
+let i$1, tokens$1, curToken$1, nextToken, curType$1, nextType, declarations, state$1;
 
 function walkNext() {
   curToken$1 = nextToken;
@@ -328,21 +322,25 @@ function createNode(token = curToken$1) {
 }
 
 function parser(arr) {
+  i$1 = 0;
   tokens$1 = arr;
+  curToken$1 = null;
+  nextToken = null;
+  curType$1 = '';
+  nextType = '';
+  declarations = [];
+  state$1 = {
+    variables: [],
+    functions: [],
+  };
+
   walkTwice();
   const ast = [];
   while (i$1 < arr.length + 2) {
     ast.push(parseStatement());
     walkNext();
   }
-  i$1 = 0;
-  tokens$1 = [];
-  curToken$1 = null;
-  nextToken = null;
-  curType$1 = '';
-  nextType = '';
-  declarations = [];
-  return ast
+  return { ast, state: state$1 }
 }
 
 function parseStatement() {
@@ -454,6 +452,10 @@ function parseFunctionDeclartionStatement() {
   }
   walkNext();
   functionStatement.body = parseBlockStatement();
+  state$1.functions.push({
+    id: functionStatement.id.value,
+    params: functionStatement.params.map((p) => p.value),
+  });
   return functionStatement
 }
 
@@ -544,6 +546,7 @@ function parseAssignmentExpression(curNode) {
   ) {
     expressionNode.type = ASTType.VariableDeclaration;
     declarations.push(curNode.value);
+    state$1.variables.push(curNode);
   }
   expressionNode.left = curNode;
   walkNext();
@@ -688,12 +691,7 @@ const Letters = /[\u4e00-\u9fa5a-zA-Z0-9]/;
 const Number = /[^\D]/;
 const Operators = ['+', '-', '*', '/', '%', '《', '<', '》', '>', '|', '&'];
 
-let i = 0;
-let source = '';
-let curChar = '';
-let curToken = '';
-let curType = '';
-let tokens = [];
+let i, source, curChar, curToken, curType, tokens;
 
 const state = {
   isParsingModelString: false,
@@ -703,6 +701,11 @@ const state = {
 const search = (x = 1) => source[i + x];
 
 function tokenizer(input) {
+  i = 0;
+  curChar = '';
+  curToken = '';
+  curType = '';
+  tokens = [];
   source =
     input
       .split(/\n/)
@@ -713,14 +716,7 @@ function tokenizer(input) {
     curChar = source[i];
     state = state(curChar);
   }
-  i = 0;
-  source = '';
-  curChar = '';
-  curToken = '';
-  curType = '';
-  let _tokens = tokens;
-  tokens = [];
-  return _tokens
+  return tokens
 }
 
 function push(type = curType, value = curToken) {
@@ -925,13 +921,24 @@ function end() {
 
 var tokenizer_1 = tokenizer;
 
+let callBacks = [];
+
 function compile(source) {
-  return generate_1(parser_1(tokenizer_1(source)))
+  const { ast, state } = parser_1(tokenizer_1(source));
+  const code = generate_1(ast);
+  callBacks.forEach((c) => c(state));
+  return code
+}
+
+function onComplete(fn) {
+  callBacks.push(fn);
 }
 
 var complier = {
   compile,
+  onComplete,
 };
 var complier_1 = complier.compile;
+var complier_2 = complier.onComplete;
 
-export { complier_1 as compile, complier as default };
+export { complier_1 as compile, complier as default, complier_2 as onComplete };

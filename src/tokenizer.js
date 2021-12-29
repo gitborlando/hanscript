@@ -4,12 +4,7 @@ const Letters = /[\u4e00-\u9fa5a-zA-Z0-9]/
 const Number = /[^\D]/
 const Operators = ['+', '-', '*', '/', '%', '《', '<', '》', '>', '|', '&']
 
-let i = 0
-let source = ''
-let curChar = ''
-let curToken = ''
-let curType = ''
-let tokens = []
+let i, source, curChar, curToken, curType, tokens
 
 const state = {
   isParsingModelString: false,
@@ -19,6 +14,11 @@ const state = {
 const search = (x = 1) => source[i + x]
 
 function tokenizer(input) {
+  i = 0
+  curChar = ''
+  curToken = ''
+  curType = ''
+  tokens = []
   source =
     input
       .split(/\n/)
@@ -29,14 +29,7 @@ function tokenizer(input) {
     curChar = source[i]
     state = state(curChar)
   }
-  i = 0
-  source = ''
-  curChar = ''
-  curToken = ''
-  curType = ''
-  let _tokens = tokens
-  tokens = []
-  return _tokens
+  return tokens
 }
 
 function push(type = curType, value = curToken) {
