@@ -143,9 +143,9 @@ function templateString() {
     push(TokenType.templateEnd, '”')
     return common
   }
-  if (isChar('《', '<')) {
+  if (isChar('{')) {
     push()
-    push(TokenType.templateSlotStart, '《')
+    push(TokenType.templateSlotStart, '{')
     return identifier
   }
   curType = TokenType.string
@@ -173,11 +173,6 @@ function comment() {
 
 function end() {
   if (Operators.includes(curChar)) {
-    if (isChar('》', '>') && state.isParsingModelString) {
-      push()
-      push(TokenType.templateSlotEnd, '》')
-      return templateString
-    }
     push()
     push(TokenType.operator, curChar)
     return common
@@ -190,9 +185,15 @@ function end() {
   }
   if (isChar('}')) {
     if (state.isParsingMemberExpression) {
+      push()
       push(TokenType.memberEnd, '}')
       state.isParsingMemberExpression = false
       return common
+    }
+    if (state.isParsingModelString) {
+      push()
+      push(TokenType.templateSlotEnd, '}')
+      return templateString
     }
     push()
     push(TokenType.blockEnd, '}')
