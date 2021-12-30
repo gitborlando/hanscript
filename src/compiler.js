@@ -6,9 +6,8 @@ let callBacks = []
 
 function compile(source) {
   const { ast, state } = parser(tokenizer(source))
-  const code = generate(ast)
   callBacks.forEach((c) => c(state))
-  return code
+  return generate(ast)
 }
 
 function onComplete(fn) {

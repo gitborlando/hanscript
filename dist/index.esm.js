@@ -925,20 +925,19 @@ let callBacks = [];
 
 function compile(source) {
   const { ast, state } = parser_1(tokenizer_1(source));
-  const code = generate_1(ast);
   callBacks.forEach((c) => c(state));
-  return code
+  return generate_1(ast)
 }
 
 function onComplete(fn) {
   callBacks.push(fn);
 }
 
-var complier = {
+var compiler = {
   compile,
   onComplete,
 };
-var complier_1 = complier.compile;
-var complier_2 = complier.onComplete;
+var compiler_1 = compiler.compile;
+var compiler_2 = compiler.onComplete;
 
-export { complier_1 as compile, complier as default, complier_2 as onComplete };
+export { compiler_1 as compile, compiler as default, compiler_2 as onComplete };

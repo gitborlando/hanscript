@@ -931,25 +931,24 @@
 
   function compile(source) {
     const { ast, state } = parser_1(tokenizer_1(source));
-    const code = generate_1(ast);
     callBacks.forEach((c) => c(state));
-    return code
+    return generate_1(ast)
   }
 
   function onComplete(fn) {
     callBacks.push(fn);
   }
 
-  var complier = {
+  var compiler = {
     compile,
     onComplete,
   };
-  var complier_1 = complier.compile;
-  var complier_2 = complier.onComplete;
+  var compiler_1 = compiler.compile;
+  var compiler_2 = compiler.onComplete;
 
-  exports.compile = complier_1;
-  exports["default"] = complier;
-  exports.onComplete = complier_2;
+  exports.compile = compiler_1;
+  exports["default"] = compiler;
+  exports.onComplete = compiler_2;
 
   Object.defineProperty(exports, '__esModule', { value: true });
 

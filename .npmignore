@@ -1,4 +1,4 @@
 /node_modules/*
+/test/*
 /.gitignore
-/example.han
 /rollup.config.js
