@@ -92,20 +92,20 @@
 
   const { TokenType: TokenType$2, ASTType: ASTType$1 } = type;
 
-  const Preset = {
-    打印: 'console.log',
-    dy: 'console.log',
-    长度: '(a) => a.length',
-    cd: '(a) => a.length',
-    四舍五入: 'parseInt',
-    sswr: 'parseInt',
-    绝对值: 'Math.abs',
-    jdz: 'Math.abs',
-    从小到大: '(arr) => arr.sort((a, b) => a < b)',
-    cxdd: '(arr) => arr.sort((a, b) => a < b)',
-    从大到小: '(arr) => arr.sort((a, b) => a > b)',
-    cddx: '(arr) => arr.sort((a, b) => a > b)',
-  };
+  // const Preset = {
+  //   打印: 'console.log',
+  //   dy: 'console.log',
+  //   长度: '(a) => a.length',
+  //   cd: '(a) => a.length',
+  //   四舍五入: 'parseInt',
+  //   sswr: 'parseInt',
+  //   绝对值: 'Math.abs',
+  //   jdz: 'Math.abs',
+  //   从小到大: '(arr) => arr.sort((a, b) => a < b)',
+  //   cxdd: '(arr) => arr.sort((a, b) => a < b)',
+  //   从大到小: '(arr) => arr.sort((a, b) => a > b)',
+  //   cddx: '(arr) => arr.sort((a, b) => a > b)',
+  // }
   const OperatorMap = {
     '》': '>',
     '《': '<',
@@ -114,16 +114,7 @@
   };
 
   function generate(ast) {
-    const presetArr = Object.entries(Preset);
-    return (
-      presetArr
-        .map(([key, value], i) => {
-          return `const ${key} = ${value}\n${
-          i === presetArr.length - 1 ? '\n' : ''
-        }`
-        })
-        .join('') + generateStatement(ast)
-    )
+    return generateStatement(ast)
   }
 
   function generateStatement(statements) {
