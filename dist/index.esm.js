@@ -86,23 +86,11 @@ var type = {
 
 const { TokenType: TokenType$2, ASTType: ASTType$1 } = type;
 
-// const Preset = {
-//   打印: 'console.log',
-//   dy: 'console.log',
-//   长度: '(a) => a.length',
-//   cd: '(a) => a.length',
-//   四舍五入: 'parseInt',
-//   sswr: 'parseInt',
-//   绝对值: 'Math.abs',
-//   jdz: 'Math.abs',
-//   从小到大: '(arr) => arr.sort((a, b) => a < b)',
-//   cxdd: '(arr) => arr.sort((a, b) => a < b)',
-//   从大到小: '(arr) => arr.sort((a, b) => a > b)',
-//   cddx: '(arr) => arr.sort((a, b) => a > b)',
-// }
 const OperatorMap = {
   '》': '>',
+  '》=': '>=',
   '《': '<',
+  '《=': '<=',
   '&': '&&',
   '|': '||',
 };
@@ -734,7 +722,10 @@ function common() {
     return identifier
   }
   if (isChar('=')) {
-    if (state.parsingBrackets.length) {
+    if (search() === '=') {
+      push(TokenType.operator, '==');
+      i++;
+    } else if (state.parsingBrackets.length) {
       push(TokenType.propertyAssignment, '=');
     } else {
       push(TokenType.assignment, '=');
@@ -775,7 +766,10 @@ function identifier() {
   }
   if (isChar('=')) {
     push();
-    if (state.parsingBrackets.length) {
+    if (search() === '=') {
+      push(TokenType.operator, '==');
+      i++;
+    } else if (state.parsingBrackets.length) {
       push(TokenType.propertyAssignment, '=');
     } else {
       push(TokenType.assignment, '=');
@@ -845,6 +839,17 @@ function comment() {
 function end() {
   if (Operators.includes(curChar)) {
     push();
+    if (isChar('《', '》', '<', '>')) {
+      if (search() === '=') {
+        push(TokenType.operator, curChar + '=');
+        i++;
+        return common
+      } else if (isChar('《', '<') && (search() === '》' || search() === '>')) {
+        push(TokenType.operator, '!=');
+        i++;
+        return common
+      }
+    }
     push(TokenType.operator, curChar);
     return common
   }
@@ -924,11 +929,32 @@ function onComplete(fn) {
   callBacks.push(fn);
 }
 
+function run(
+  code,
+  option = {
+    打印: console.log,
+    dy: console.log,
+    长度: (a) => a.length,
+    cd: (a) => a.length,
+    四舍五入: parseInt,
+    sswr: parseInt,
+    从小到大: (arr) => arr.sort((a, b) => a < b),
+    cxdd: (arr) => arr.sort((a, b) => a < b),
+    从大到小: (arr) => arr.sort((a, b) => a > b),
+    cddx: (arr) => arr.sort((a, b) => a > b),
+  }
+) {
+  option = Object.assign(Math, option);
+  new Function('option', 'with(option){' + code + '}')(option);
+}
+
 var compiler = {
   compile,
   onComplete,
+  run,
 };
 var compiler_1 = compiler.compile;
 var compiler_2 = compiler.onComplete;
+var compiler_3 = compiler.run;
 
-export { compiler_1 as compile, compiler as default, compiler_2 as onComplete };
+export { compiler_1 as compile, compiler as default, compiler_2 as onComplete, compiler_3 as run };

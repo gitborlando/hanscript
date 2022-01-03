@@ -1,22 +1,10 @@
 const { TokenType, ASTType } = require('./type')
 
-// const Preset = {
-//   打印: 'console.log',
-//   dy: 'console.log',
-//   长度: '(a) => a.length',
-//   cd: '(a) => a.length',
-//   四舍五入: 'parseInt',
-//   sswr: 'parseInt',
-//   绝对值: 'Math.abs',
-//   jdz: 'Math.abs',
-//   从小到大: '(arr) => arr.sort((a, b) => a < b)',
-//   cxdd: '(arr) => arr.sort((a, b) => a < b)',
-//   从大到小: '(arr) => arr.sort((a, b) => a > b)',
-//   cddx: '(arr) => arr.sort((a, b) => a > b)',
-// }
 const OperatorMap = {
   '》': '>',
+  '》=': '>=',
   '《': '<',
+  '《=': '<=',
   '&': '&&',
   '|': '||',
 }

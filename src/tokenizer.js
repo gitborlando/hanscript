@@ -56,7 +56,10 @@ function common() {
     return identifier
   }
   if (isChar('=')) {
-    if (state.parsingBrackets.length) {
+    if (search() === '=') {
+      push(TokenType.operator, '==')
+      i++
+    } else if (state.parsingBrackets.length) {
       push(TokenType.propertyAssignment, '=')
     } else {
       push(TokenType.assignment, '=')
@@ -97,7 +100,10 @@ function identifier() {
   }
   if (isChar('=')) {
     push()
-    if (state.parsingBrackets.length) {
+    if (search() === '=') {
+      push(TokenType.operator, '==')
+      i++
+    } else if (state.parsingBrackets.length) {
       push(TokenType.propertyAssignment, '=')
     } else {
       push(TokenType.assignment, '=')
@@ -167,6 +173,17 @@ function comment() {
 function end() {
   if (Operators.includes(curChar)) {
     push()
+    if (isChar('《', '》', '<', '>')) {
+      if (search() === '=') {
+        push(TokenType.operator, curChar + '=')
+        i++
+        return common
+      } else if (isChar('《', '<') && (search() === '》' || search() === '>')) {
+        push(TokenType.operator, '!=')
+        i++
+        return common
+      }
+    }
     push(TokenType.operator, curChar)
     return common
   }
