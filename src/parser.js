@@ -118,9 +118,8 @@ function parseExpressionStatement() {
 function parseIfStatement() {
   const ifStatement = {}
   ifStatement.type = ASTType.IfStatement
-  walkTwice()
-  ifStatement.test = parseExpression()
   walkNext()
+  ifStatement.test = parseExpression()
   ifStatement.consequent = parseBlockStatement()
   if (curType === TokenType.keywordElif) {
     ifStatement.alternate = parseIfStatement()
@@ -134,7 +133,7 @@ function parseIfStatement() {
 function parseForStatement() {
   const forStatement = {}
   forStatement.type = ASTType.ForStatement
-  walkTwice()
+  walkNext()
   let identifier = ''
   identifier = createNode()
   walkTwice()
@@ -150,7 +149,6 @@ function parseForStatement() {
     operator: '<',
     right: parseExpression(),
   }
-  walkNext()
   forStatement.body = parseBlockStatement()
   return forStatement
 }
@@ -158,9 +156,8 @@ function parseForStatement() {
 function parseWhileStatement() {
   const whileStatement = {}
   whileStatement.type = ASTType.WhileStatement
-  walkTwice()
-  whileStatement.test = parseExpression()
   walkNext()
+  whileStatement.test = parseExpression()
   whileStatement.consequent = parseBlockStatement()
   return whileStatement
 }
@@ -201,6 +198,7 @@ function parseExpression() {
       TokenType.assignment,
       TokenType.semicolon,
       TokenType.comma,
+      TokenType.blockStart,
       TokenType.bracketEnd,
       TokenType.memberEnd,
       TokenType.templateSlotEnd,
@@ -220,7 +218,7 @@ function parseExpression() {
     if (nextType === TokenType.bracketStart) {
       return parseCallExpression()
     }
-    if (nextType === TokenType.memberStart) {
+    if (nextType === TokenType.memberStart || nextType === TokenType.member) {
       return parseMemberExpression()
     }
   }
@@ -379,8 +377,16 @@ function parseMemberExpression() {
   const expressionNode = {}
   expressionNode.type = ASTType.MemberExpression
   expressionNode.object = createNode()
-  walkTwice()
-  expressionNode.property = parseExpression()
+  walkNext()
+  if (curType == TokenType.member) {
+    expressionNode.operator = '#'
+    walkNext()
+    expressionNode.property = createNode()
+  } else {
+    expressionNode.operator = '{'
+    walkNext()
+    expressionNode.property = parseExpression()
+  }
   walkNext()
   return parseAssignmentOrBinaryExpression(expressionNode)
 }

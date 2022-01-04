@@ -10,6 +10,7 @@ const TokenType = {
   propertyAssignment: 'propertyAssignment',
   bracketStart: 'bracketStart',
   bracketEnd: 'bracketEnd',
+  member: 'member',
   memberStart: 'memberStart',
   memberEnd: 'memberEnd',
   templateElement: 'templateElement',

@@ -154,6 +154,14 @@ function generateExpression(expression) {
       )})`
     }
     case ASTType.MemberExpression: {
+      if (expression.operator === '#') {
+        let property = generateExpression(expression.property)
+        property =
+          expression.property.type === TokenType.identifier
+            ? `'${property}'`
+            : property
+        return `${expression.object.value}[${property}]`
+      }
       return `${expression.object.value}[${generateExpression(
         expression.property
       )}]`

@@ -16,6 +16,7 @@
     propertyAssignment: 'propertyAssignment',
     bracketStart: 'bracketStart',
     bracketEnd: 'bracketEnd',
+    member: 'member',
     memberStart: 'memberStart',
     memberEnd: 'memberEnd',
     templateElement: 'templateElement',
@@ -246,6 +247,14 @@
       )})`
       }
       case ASTType$1.MemberExpression: {
+        if (expression.operator === '#') {
+          let property = generateExpression(expression.property);
+          property =
+            expression.property.type === TokenType$2.identifier
+              ? `'${property}'`
+              : property;
+          return `${expression.object.value}[${property}]`
+        }
         return `${expression.object.value}[${generateExpression(
         expression.property
       )}]`
@@ -375,9 +384,8 @@
   function parseIfStatement() {
     const ifStatement = {};
     ifStatement.type = ASTType.IfStatement;
-    walkTwice();
-    ifStatement.test = parseExpression();
     walkNext();
+    ifStatement.test = parseExpression();
     ifStatement.consequent = parseBlockStatement();
     if (curType$1 === TokenType$1.keywordElif) {
       ifStatement.alternate = parseIfStatement();
@@ -391,7 +399,7 @@
   function parseForStatement() {
     const forStatement = {};
     forStatement.type = ASTType.ForStatement;
-    walkTwice();
+    walkNext();
     let identifier = '';
     identifier = createNode();
     walkTwice();
@@ -407,7 +415,6 @@
       operator: '<',
       right: parseExpression(),
     };
-    walkNext();
     forStatement.body = parseBlockStatement();
     return forStatement
   }
@@ -415,9 +422,8 @@
   function parseWhileStatement() {
     const whileStatement = {};
     whileStatement.type = ASTType.WhileStatement;
-    walkTwice();
-    whileStatement.test = parseExpression();
     walkNext();
+    whileStatement.test = parseExpression();
     whileStatement.consequent = parseBlockStatement();
     return whileStatement
   }
@@ -458,6 +464,7 @@
         TokenType$1.assignment,
         TokenType$1.semicolon,
         TokenType$1.comma,
+        TokenType$1.blockStart,
         TokenType$1.bracketEnd,
         TokenType$1.memberEnd,
         TokenType$1.templateSlotEnd,
@@ -477,7 +484,7 @@
       if (nextType === TokenType$1.bracketStart) {
         return parseCallExpression()
       }
-      if (nextType === TokenType$1.memberStart) {
+      if (nextType === TokenType$1.memberStart || nextType === TokenType$1.member) {
         return parseMemberExpression()
       }
     }
@@ -636,8 +643,16 @@
     const expressionNode = {};
     expressionNode.type = ASTType.MemberExpression;
     expressionNode.object = createNode();
-    walkTwice();
-    expressionNode.property = parseExpression();
+    walkNext();
+    if (curType$1 == TokenType$1.member) {
+      expressionNode.operator = '#';
+      walkNext();
+      expressionNode.property = createNode();
+    } else {
+      expressionNode.operator = '{';
+      walkNext();
+      expressionNode.property = parseExpression();
+    }
     walkNext();
     return parseAssignmentOrBinaryExpression(expressionNode)
   }
@@ -766,6 +781,7 @@
       curToken += curChar;
       return identifier
     }
+
     if (isChar(' ')) {
       push();
       return common
@@ -786,6 +802,11 @@
       state.parsingBrackets.push('(');
       push();
       push(TokenType.bracketStart, '（');
+      return common
+    }
+    if (isChar('#')) {
+      push();
+      push(TokenType.member, '#');
       return common
     }
     if (isChar('{')) {
@@ -954,19 +975,19 @@
     new Function('option', 'with(option){' + code + '}')(option);
   }
 
-  var compiler = {
+  var src = {
     compile,
     onComplete,
     run,
   };
-  var compiler_1 = compiler.compile;
-  var compiler_2 = compiler.onComplete;
-  var compiler_3 = compiler.run;
+  var src_1 = src.compile;
+  var src_2 = src.onComplete;
+  var src_3 = src.run;
 
-  exports.compile = compiler_1;
-  exports["default"] = compiler;
-  exports.onComplete = compiler_2;
-  exports.run = compiler_3;
+  exports.compile = src_1;
+  exports["default"] = src;
+  exports.onComplete = src_2;
+  exports.run = src_3;
 
   Object.defineProperty(exports, '__esModule', { value: true });
 

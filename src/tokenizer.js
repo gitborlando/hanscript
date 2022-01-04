@@ -94,6 +94,7 @@ function identifier() {
     curToken += curChar
     return identifier
   }
+
   if (isChar(' ')) {
     push()
     return common
@@ -114,6 +115,11 @@ function identifier() {
     state.parsingBrackets.push('(')
     push()
     push(TokenType.bracketStart, '（')
+    return common
+  }
+  if (isChar('#')) {
+    push()
+    push(TokenType.member, '#')
     return common
   }
   if (isChar('{')) {
