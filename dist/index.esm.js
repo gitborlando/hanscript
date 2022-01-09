@@ -241,14 +241,6 @@ function generateExpression(expression) {
       )})`
     }
     case ASTType$1.MemberExpression: {
-      if (expression.operator === '#') {
-        let property = generateExpression(expression.property);
-        property =
-          expression.property.type === TokenType$2.identifier
-            ? `'${property}'`
-            : property;
-        return `${expression.object.value}[${property}]`
-      }
       return `${expression.object.value}[${generateExpression(
         expression.property
       )}]`
@@ -705,10 +697,10 @@ function tokenizer(input) {
       .split(/\n/)
       .filter((i) => /[\S]/.test(i))
       .join('\n') + '\n'; // 去除空行
-  let state = common;
+  let reader = common;
   for (; i < source.length; i++) {
     curChar = source[i];
-    state = state(curChar);
+    reader = reader(curChar);
   }
   return tokens
 }
@@ -933,12 +925,28 @@ function end() {
     push(TokenType.semicolon, ';');
     return common
   }
+  if (isChar('\t')) {
+    push();
+    return common
+  }
   console.log('error with: ', curChar);
 }
 
 var tokenizer_1 = tokenizer;
 
 let callBacks = [];
+const preset = {
+  打印: console.log,
+  dy: console.log,
+  长度: (a) => a.length,
+  cd: (a) => a.length,
+  取整: parseInt,
+  qz: parseInt,
+  从小到大: (arr) => arr.sort((a, b) => a < b),
+  cxdd: (arr) => arr.sort((a, b) => a < b),
+  从大到小: (arr) => arr.sort((a, b) => a > b),
+  cddx: (arr) => arr.sort((a, b) => a > b),
+};
 
 function compile(source) {
   const { ast, state } = parser_1(tokenizer_1(source));
@@ -950,23 +958,9 @@ function onComplete(fn) {
   callBacks.push(fn);
 }
 
-function run(
-  code,
-  option = {
-    打印: console.log,
-    dy: console.log,
-    长度: (a) => a.length,
-    cd: (a) => a.length,
-    四舍五入: parseInt,
-    sswr: parseInt,
-    从小到大: (arr) => arr.sort((a, b) => a < b),
-    cxdd: (arr) => arr.sort((a, b) => a < b),
-    从大到小: (arr) => arr.sort((a, b) => a > b),
-    cddx: (arr) => arr.sort((a, b) => a > b),
-  }
-) {
-  option = Object.assign(Math, option);
-  new Function('option', 'with(option){' + code + '}')(option);
+function run(code, option = {}) {
+  Object.entries(option).forEach(([key, value]) => (preset[key] = value));
+  new Function('preset', 'with(preset){' + code + '}')(preset);
 }
 
 var src = {

@@ -24,10 +24,10 @@ function tokenizer(input) {
       .split(/\n/)
       .filter((i) => /[\S]/.test(i))
       .join('\n') + '\n' // 去除空行
-  let state = common
+  let reader = common
   for (; i < source.length; i++) {
     curChar = source[i]
-    state = state(curChar)
+    reader = reader(curChar)
   }
   return tokens
 }
@@ -250,6 +250,10 @@ function end() {
       return common
     }
     push(TokenType.semicolon, ';')
+    return common
+  }
+  if (isChar('\t')) {
+    push()
     return common
   }
   console.log('error with: ', curChar)
